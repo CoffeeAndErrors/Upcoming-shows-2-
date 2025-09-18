@@ -19,7 +19,7 @@ const events = [
     venue: 'LYFE',
     city: 'Bhubaneswar',
     type: 'Jazz',
-    allAges: True,
+    allAges: true,
     details: 'Featuring headliners and up-and-coming jazz bands.'
   },
   {
