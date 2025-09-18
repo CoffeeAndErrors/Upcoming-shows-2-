@@ -1,0 +1,35 @@
+@import "tailwindcss";
+
+
+body {
+  background-color: white;
+  color: black;
+}
+
+.music-bg {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: -1;
+  overflow: hidden;
+}
+
+.note {
+  position: absolute;
+  color: rgba(255, 0, 0, 0.3);
+  font-size: 2rem;
+  animation: float 20s infinite linear;
+}
+
+@keyframes float {
+  from {
+    transform: translateY(100vh) scale(1);
+    opacity: 1;
+  }
+  to {
+    transform: translateY(-10vh) scale(1.5);
+    opacity: 0;
+  }
+}
