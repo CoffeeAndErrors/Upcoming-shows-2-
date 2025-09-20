@@ -1,109 +1,66 @@
 import React, { useState, useMemo } from 'react';
+import { useEventData } from './hooks/useEventData';
+import { EventForm } from './EventForm';
 
-// Hardcoded event data
-const events = [
-  {
-    id: 1,
-    date: '2025-10-25',
-    title: 'MUSEPAD',
-    venue: 'VIVANTA BY TAJ',
-    city: 'Bhubaneswar',
-    type: 'Acoustic',
-    allAges: true,
-    details: 'An intimate evening of acoustic performances. Featuring a lineup of talented singer-songwriters.'
-  },
-  {
-    id: 2,
-    date: '2025-11-05',
-    title: 'ACOUSTIC EVENING',
-    venue: 'LYFE',
-    city: 'Bhubaneswar',
-    type: 'Jazz',
-    allAges: true,
-    details: 'Featuring headliners and up-and-coming jazz bands.'
-  },
-  {
-    id: 3,
-    date: '2025-10-25',
-    title: 'Jazz in the Park',
-    venue: 'Central Park',
-    city: 'New York',
-    type: 'Jazz',
-    allAges: true,
-    details: 'A relaxing afternoon of smooth jazz in the beautiful setting of Central Park.'
-  },
-  {
-    id: 4,
-    date: '2025-12-01',
-    title: 'Electronic Dance Party',
-    venue: 'Warehouse 305',
-    city: 'Miami',
-    type: 'Electronic',
-    allAges: false,
-    details: 'Dance the night away to the beats of top electronic music DJs from around the world.'
-  },
-  {
-    id: 5,
-    date: '2025-11-20',
-    title: 'Indie Showcase',
-    venue: 'The Underground',
-    city: 'Chicago',
-    type: 'Indie',
-    allAges: true,
-    details: 'Discover your new favorite indie bands at our monthly showcase.'
-  },
-];
+// --- Reusable Components (Keep these from your previous setup) ---
 
 // Animated Background Component
-const MusicBackground = () => {
-  const notes = ['♪', '♫', '♬', '♩', '♭', '♯'];
+const MusicBackground = () => (
+  <div className="music-bg fixed top-0 left-0 w-full h-full -z-10 overflow-hidden">
+    {Array.from({ length: 15 }).map((_, i) => (
+      <span key={i} className="note absolute text-red-500/10 text-2xl" style={{
+        left: `${Math.random() * 100}vw`,
+        animation: `float ${Math.random() * 10 + 15}s linear ${Math.random() * 5}s infinite`,
+      }}>
+        {['♫', '♪', '♬'][Math.floor(Math.random() * 3)]}
+      </span>
+    ))}
+  </div>
+);
+
+// Event Details Modal
+const DetailsModal = ({ event, onClose }) => {
+  if (!event) return null;
   return (
-    <div className="music-bg">
-      {Array.from({ length: 15 }).map((_, index) => (
-        <span
-          key={index}
-          className="note"
-          style={{
-            left: `${Math.random() * 100}vw`,
-            animationDuration: `${Math.random() * 10 + 15}s`,
-            animationDelay: `${Math.random() * 10}s`,
-            fontSize: `${Math.random() * 2 + 1}rem`,
-          }}
-        >
-          {notes[Math.floor(Math.random() * notes.length)]}
-        </span>
-      ))}
+    <div className="fixed inset-0 bg-black/50 flex justify-center items-center p-4 z-50">
+      <div className="bg-white rounded-lg shadow-2xl p-8 max-w-lg w-full">
+        <h2 className="text-3xl font-bold mb-4">{event.title}</h2>
+        <p className="text-gray-700 mb-2"><strong>Date:</strong> {new Date(event.date).toLocaleDateString('en-US', { timeZone: 'UTC' })}</p>
+        <p className="text-gray-700 mb-2"><strong>Venue:</strong> {event.venue}, {event.city}</p>
+        <p className="text-gray-700 mb-6">{event.details || 'No additional details available.'}</p>
+        <button onClick={onClose} className="bg-red-600 text-white px-6 py-2 rounded-lg hover:bg-red-700">Close</button>
+      </div>
     </div>
   );
 };
 
-// Event Card Component
-const EventCard = ({ event, onDetailsClick }) => {
+// Event Card
+const EventCard = ({ event, onDetailsClick, onEditClick, onDeleteClick }) => {
   const eventDate = new Date(event.date);
-  const day = eventDate.getDate();
-  const month = eventDate.toLocaleString('default', { month: 'short' }).toUpperCase();
+  const day = eventDate.getUTCDate();
+  const month = eventDate.toLocaleString('default', { month: 'short', timeZone: 'UTC' }).toUpperCase();
 
   return (
-    <div className="bg-white rounded-lg shadow-md overflow-hidden transform hover:scale-105 transition-transform duration-300 hover:shadow-xl hover:shadow-red-200">
+    <div className="bg-white rounded-lg shadow-md overflow-hidden transition-shadow duration-300 hover:shadow-xl hover:shadow-red-200/50">
       <div className="p-6">
-        <div className="flex items-start">
-          <div className="text-center mr-6">
-            <div className="bg-red-500 text-white rounded-md px-3 py-1 text-sm font-bold">{month}</div>
-            <div className="text-3xl font-bold mt-1">{day}</div>
+        <div className="flex flex-col sm:flex-row items-start gap-6">
+          <div className="text-center shrink-0">
+            <div className="bg-red-600 text-white rounded-md px-3 py-1 text-sm font-bold">{month}</div>
+            <div className="text-3xl font-bold mt-1 text-gray-800">{day}</div>
           </div>
           <div className="flex-grow">
-            <h3 className="text-2xl font-bold mb-2">{event.title}</h3>
+            <h3 className="text-2xl font-bold mb-2 text-gray-900">{event.title}</h3>
             <p className="text-gray-600 mb-4">{event.venue}, {event.city}</p>
             <div className="flex flex-wrap gap-2 mb-4">
-              <span className="bg-red-100 text-red-800 text-xs font-semibold mr-2 px-2.5 py-0.5 rounded-full">{event.type}</span>
+              <span className="bg-red-100 text-red-800 text-xs font-semibold px-2.5 py-0.5 rounded-full">{event.type}</span>
               {event.allAges && <span className="bg-gray-200 text-gray-800 text-xs font-semibold px-2.5 py-0.5 rounded-full">All Ages</span>}
             </div>
-            <button
-              onClick={() => onDetailsClick(event)}
-              className="bg-red-500 text-white px-4 py-2 rounded-lg hover:bg-red-600 transition-colors"
-            >
-              Details
-            </button>
+            {/* Action Buttons */}
+            <div className="flex flex-wrap gap-2">
+              <button onClick={() => onDetailsClick(event)} className="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 text-sm font-semibold">Details</button>
+              <button onClick={() => onEditClick(event)} className="bg-gray-700 text-white px-4 py-2 rounded-lg hover:bg-gray-800 text-sm font-semibold">Edit</button>
+              <button onClick={() => onDeleteClick(event.id)} className="bg-gray-300 text-gray-800 px-4 py-2 rounded-lg hover:bg-gray-400 text-sm font-semibold">Delete</button>
+            </div>
           </div>
         </div>
       </div>
@@ -111,66 +68,75 @@ const EventCard = ({ event, onDetailsClick }) => {
   );
 };
 
-// Modal Component
-const Modal = ({ event, onClose }) => {
-  if (!event) return null;
 
-  return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center p-4">
-      <div className="bg-white rounded-lg shadow-2xl p-8 max-w-lg w-full">
-        <h2 className="text-3xl font-bold mb-4">{event.title}</h2>
-        <p className="text-gray-700 mb-2"><strong>Date:</strong> {new Date(event.date).toLocaleDateString()}</p>
-        <p className="text-gray-700 mb-2"><strong>Venue:</strong> {event.venue}, {event.city}</p>
-        <p className="text-gray-700 mb-6">{event.details}</p>
-        <button
-          onClick={onClose}
-          className="bg-red-500 text-white px-6 py-2 rounded-lg hover:bg-red-600 transition-colors"
-        >
-          Close
-        </button>
-      </div>
-    </div>
-  );
-};
-
-// Main App Component
+// --- Main App Component ---
 function App() {
-  // State for filters and search
+  const { events, addEvent, updateEvent, deleteEvent } = useEventData();
   const [searchTerm, setSearchTerm] = useState('');
   const [cityFilter, setCityFilter] = useState('');
   const [typeFilter, setTypeFilter] = useState('');
   const [sortOption, setSortOption] = useState('date-asc');
-  const [selectedEvent, setSelectedEvent] = useState(null);
+  
+  const [isFormOpen, setIsFormOpen] = useState(false);
+  const [editingEvent, setEditingEvent] = useState(null); // Holds the event to be edited
+  const [detailsEvent, setDetailsEvent] = useState(null); // Holds the event for the details view
 
   // Memoized filtering and sorting logic
   const filteredEvents = useMemo(() => {
     return events
       .filter(event => {
-        const lowerSearchTerm = searchTerm.toLowerCase();
+        const lowerSearch = searchTerm.toLowerCase();
         return (
-          (event.title.toLowerCase().includes(lowerSearchTerm) ||
-           event.venue.toLowerCase().includes(lowerSearchTerm) ||
-           event.city.toLowerCase().includes(lowerSearchTerm)) &&
+          (event.title.toLowerCase().includes(lowerSearch) ||
+           event.venue.toLowerCase().includes(lowerSearch) ||
+           event.city.toLowerCase().includes(lowerSearch)) &&
           (cityFilter === '' || event.city === cityFilter) &&
           (typeFilter === '' || event.type === typeFilter)
         );
       })
       .sort((a, b) => {
-        switch (sortOption) {
-          case 'date-asc':
-            return new Date(a.date) - new Date(b.date);
-          case 'date-desc':
-            return new Date(b.date) - new Date(a.date);
-          case 'title-az':
-            return a.title.localeCompare(b.title);
-          default:
-            return 0;
-        }
+        if (sortOption === 'date-asc') return new Date(a.date) - new Date(b.date);
+        if (sortOption === 'date-desc') return new Date(b.date) - new Date(a.date);
+        return 0;
       });
-  }, [searchTerm, cityFilter, typeFilter, sortOption]);
+  }, [events, searchTerm, cityFilter, typeFilter, sortOption]);
 
-  const cities = [...new Set(events.map(event => event.city))];
-  const types = [...new Set(events.map(event => event.type))];
+  const cities = [...new Set(events.map(e => e.city).sort())];
+  const eventTypes = [...new Set(events.map(e => e.type).sort())];
+
+  // --- Event Handlers for Modals and Forms ---
+  
+  // Opens the form for editing an existing event
+  const handleEditClick = (event) => {
+    setEditingEvent(event);
+    setIsFormOpen(true);
+  };
+  
+  // Opens the form for adding a new event
+  const handleAddClick = () => {
+    setEditingEvent(null); // Ensure no event is pre-filled
+    setIsFormOpen(true);
+  };
+
+  const handleCloseForm = () => {
+    setIsFormOpen(false);
+    setEditingEvent(null);
+  };
+
+  const handleSaveEvent = (eventData) => {
+    if (eventData.id) {
+      updateEvent(eventData); // If it has an ID, it's an update
+    } else {
+      addEvent(eventData); // Otherwise, it's a new event
+    }
+    handleCloseForm(); // Close the form after saving
+  };
+
+  const handleDeleteEvent = (eventId) => {
+    if (window.confirm('Are you sure you want to delete this event?')) {
+      deleteEvent(eventId);
+    }
+  };
 
   return (
     <>
@@ -178,57 +144,57 @@ function App() {
       <div className="container mx-auto p-4 sm:p-8">
         <header className="text-center my-12">
           <h1 className="text-5xl font-extrabold text-gray-800">Upcoming Shows</h1>
-          <p className="text-xl text-gray-500 mt-2">Your next live music experience awaits.</p>
+          <p className="text-xl text-gray-500 mt-2">Your event management dashboard</p>
         </header>
 
-        {/* Filters Section */}
-        <div className="bg-white p-6 rounded-lg shadow-lg mb-12">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            <input
-              type="text"
-              placeholder="Search by title, venue, or city..."
-              className="p-3 border rounded-lg w-full"
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
-            <select
-              className="p-3 border rounded-lg w-full"
-              onChange={(e) => setCityFilter(e.target.value)}
-            >
+        {/* --- Controls, Filters, and Add Button --- */}
+        <div className="bg-white/80 backdrop-blur-sm p-4 sm:p-6 rounded-lg shadow-lg mb-8 sticky top-4 z-20">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 items-center">
+            <input type="text" placeholder="Search events..." className="p-3 border rounded-lg w-full lg:col-span-2" onChange={e => setSearchTerm(e.target.value)} />
+            <select className="p-3 border rounded-lg w-full" onChange={e => setCityFilter(e.target.value)}>
               <option value="">All Cities</option>
               {cities.map(city => <option key={city} value={city}>{city}</option>)}
             </select>
-            <select
-              className="p-3 border rounded-lg w-full"
-              onChange={(e) => setTypeFilter(e.target.value)}
-            >
-              <option value="">All Event Types</option>
-              {types.map(type => <option key={type} value={type}>{type}</option>)}
+            <select className="p-3 border rounded-lg w-full" onChange={e => setTypeFilter(e.target.value)}>
+              <option value="">All Types</option>
+              {eventTypes.map(type => <option key={type} value={type}>{type}</option>)}
             </select>
-            <select
-              className="p-3 border rounded-lg w-full"
-              onChange={(e) => setSortOption(e.target.value)}
-            >
+            <select className="p-3 border rounded-lg w-full" onChange={e => setSortOption(e.target.value)}>
               <option value="date-asc">Sort by Date (Asc)</option>
               <option value="date-desc">Sort by Date (Desc)</option>
-              <option value="title-az">Sort by Title (A-Z)</option>
             </select>
+          </div>
+          <div className="mt-4 text-center">
+            <button onClick={handleAddClick} className="bg-red-600 text-white font-bold px-6 py-3 rounded-lg hover:bg-red-700 transition-transform hover:scale-105">
+              + Add New Event
+            </button>
           </div>
         </div>
 
-        {/* Events Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-1 gap-8">
+        {/* --- Events List --- */}
+        <div className="space-y-8">
           {filteredEvents.length > 0 ? (
             filteredEvents.map(event => (
-              <EventCard key={event.id} event={event} onDetailsClick={setSelectedEvent} />
+              <EventCard
+                key={event.id}
+                event={event}
+                onDetailsClick={setDetailsEvent}
+                onEditClick={handleEditClick}
+                onDeleteClick={handleDeleteEvent}
+              />
             ))
           ) : (
-            <p className="text-center text-gray-500 col-span-full">No events found. Try adjusting your filters.</p>
+            <div className="text-center text-gray-500 py-16 bg-white/50 rounded-lg">
+              <h3 className="text-2xl font-semibold">No events found.</h3>
+              <p className="mt-2">Try adding a new event or clearing your filters.</p>
+            </div>
           )}
         </div>
-
-        {/* Modal */}
-        <Modal event={selectedEvent} onClose={() => setSelectedEvent(null)} />
       </div>
+      
+      {/* --- Modals (conditionally rendered) --- */}
+      {isFormOpen && <EventForm event={editingEvent} onSave={handleSaveEvent} onClose={handleCloseForm} />}
+      {detailsEvent && <DetailsModal event={detailsEvent} onClose={() => setDetailsEvent(null)} />}
     </>
   );
 }
